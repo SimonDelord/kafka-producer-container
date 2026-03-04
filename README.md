@@ -133,20 +133,72 @@ Each message is a JSON payload with the following structure:
 
 ## OpenShift Deployment
 
-### Build on OpenShift
+### Option 1: Build from GitHub (Recommended)
+
+Build the image directly from this GitHub repository on OpenShift:
+
+```bash
+# Create namespace (or use existing)
+oc new-project generator
+
+# Create build config from GitHub repository
+oc new-build --name=truck-kafka-producer \
+  --strategy=docker \
+  https://github.com/SimonDelord/kafka-producer-container.git
+
+# Watch the build progress
+oc logs -f buildconfig/truck-kafka-producer
+
+# Verify the image was created
+oc get imagestream truck-kafka-producer
+```
+
+The build will automatically:
+1. Clone the repository from GitHub
+2. Build the Docker image using the Dockerfile
+3. Push to the internal OpenShift registry
+
+To trigger a new build (e.g., after code updates):
+
+```bash
+oc start-build truck-kafka-producer --follow
+```
+
+### Option 2: Build from Local Directory
+
+If you have the source code locally:
 
 ```bash
 # Create namespace
-oc new-project kafka-producer
+oc new-project generator
 
-# Create build config
+# Create build config for binary builds
 oc new-build --name=truck-kafka-producer --binary --strategy=docker
 
-# Build the image
+# Build the image from local directory
 oc start-build truck-kafka-producer --from-dir=. --follow
+```
 
-# Deploy (edit deployment.yaml first with your Kafka details)
+### Deploy the Producer
+
+After building (using either option), deploy the producer:
+
+```bash
+# Deploy using the kubernetes manifest (edit first to set your Kafka details)
 oc apply -f kubernetes/deployment.yaml
+```
+
+Or deploy directly with custom environment variables:
+
+```bash
+oc create deployment truck-kafka-producer \
+  --image=image-registry.openshift-image-registry.svc:5000/generator/truck-kafka-producer:latest
+
+oc set env deployment/truck-kafka-producer \
+  KAFKA_BOOTSTRAP_SERVERS=my-cluster-kafka-bootstrap.kafka-demo.svc:9092 \
+  KAFKA_TOPIC=truck-telemetry \
+  TRUCK_ID=TRK-001 \
+  TRUCK_NUMBER=1
 ```
 
 ### Cross-Namespace Kafka Access

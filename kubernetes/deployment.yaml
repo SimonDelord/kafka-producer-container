@@ -1,0 +1,65 @@
+# Truck Telemetry Kafka Producer - Kubernetes Deployment
+#
+# This deployment creates a pod that generates randomized truck telemetry
+# and sends it to a Kafka topic at a configurable rate.
+#
+# Prerequisites:
+# 1. Kafka cluster accessible from the deployment namespace
+# 2. Target Kafka topic created
+#
+# Usage:
+#   kubectl apply -f deployment.yaml
+#
+# To customize, modify the environment variables below or use kustomize/helm
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: truck-kafka-producer
+  labels:
+    app: truck-kafka-producer
+    app.kubernetes.io/name: truck-kafka-producer
+    app.kubernetes.io/component: producer
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: truck-kafka-producer
+  template:
+    metadata:
+      labels:
+        app: truck-kafka-producer
+    spec:
+      containers:
+        - name: producer
+          image: truck-kafka-producer:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            # Kafka Configuration
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              value: "my-cluster-kafka-bootstrap:9092"
+            - name: KAFKA_TOPIC
+              value: "truck-telemetry"
+            
+            # Message Generation
+            - name: MESSAGE_INTERVAL_SECONDS
+              value: "1.0"
+            
+            # Truck Identity
+            - name: TRUCK_ID
+              value: "TRK-001"
+            - name: TRUCK_NUMBER
+              value: "1"
+            - name: FLEET_ID
+              value: "BHP-WA-001"
+            - name: FIRMWARE_VERSION
+              value: "2.4.1-build.2847"
+          
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "50m"
+            limits:
+              memory: "128Mi"
+              cpu: "200m"
